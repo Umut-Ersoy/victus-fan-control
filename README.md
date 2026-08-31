@@ -321,7 +321,7 @@ systemctl status victus-fan-control.service
 journalctl -u victus-fan-control.service -f
 ```
 
-### 4. Temiz Kaldırma
+### 4. Temiz Kaldırma (Tek Komut)
 Servisi tamamen kaldırmak ve tam BIOS otomatik kontrolünü geri yüklemek için:
 ```bash
 sudo make uninstall
