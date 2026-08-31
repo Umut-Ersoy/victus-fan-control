@@ -1,0 +1,19 @@
+[Unit]
+Description=HP Victus Dynamic Fan Control Service (Native C)
+After=syslog.target network.target
+
+[Service]
+Type=simple
+WorkingDirectory=@WORKING_DIR@
+ExecStart=@WORKING_DIR@/victus-fan-control -c @WORKING_DIR@/config.conf
+Restart=always
+RestartSec=5s
+KillSignal=SIGTERM
+TimeoutStopSec=5
+# Ensure fans return to BIOS auto control if service stops or crashes
+ExecStopPost=/bin/sh -c 'for p in /sys/devices/platform/hp-wmi/hwmon/hwmon*/pwm1_enable; do [ -f "$$p" ] && echo 2 > "$$p" || true; done'
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
