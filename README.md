@@ -113,7 +113,7 @@ systemctl status victus-fan-control.service
 journalctl -u victus-fan-control.service -f
 ```
 
-### 4. Clean Uninstallation
+### 4. Clean Uninstallation (One-Command)
 To completely remove the service and restore full BIOS automatic control:
 ```bash
 sudo make uninstall
