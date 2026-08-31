@@ -1,12 +1,12 @@
-# HP Victus Dynamic Fan Control (`victus-fan-control`)
+# Victus Fan Control (`victus-fan-control`)
 
-A lightweight, native C daemon for dynamic hardware fan control on HP Victus & OMEN laptops running Linux.
+A lightweight fan control daemon for Victus laptops running Linux.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Language: C11](https://img.shields.io/badge/Language-C11-green.svg)](https://en.wikipedia.org/wiki/C11_(C_standard_revision))
 [![Platform: Linux](https://img.shields.io/badge/Platform-Linux-orange.svg)]()
 
-> **Language / Dil:** [🇬🇧 English](#table-of-contents) | [🇹🇷 Türkçe](#türkçe-dokümantasyon)
+[🇬🇧 English](#table-of-contents) | [🇹🇷 Türkçe](#-t%C3%BCrk%C3%A7e-dok%C3%BCmantasyon)
 
 ---
 
@@ -19,7 +19,7 @@ A lightweight, native C daemon for dynamic hardware fan control on HP Victus & O
   - [Compilation](#1-compilation)
   - [Simulation / Test Mode (Dry-Run)](#2-simulation--test-mode-dry-run)
   - [Service Installation (One-Command)](#3-service-installation-one-command)
-  - [Clean Uninstallation](#4-clean-uninstallation)
+  - [Clean Uninstallation (One-Command)](#4-clean-uninstallation-one-command)
 - [Configuration Guide (`config.conf`)](#configuration-guide-configconf)
 - [Fan Curve & Linear Interpolation](#fan-curve--linear-interpolation)
 - [Safety & Fault-Tolerance Architecture](#safety--fault-tolerance-architecture)
@@ -57,7 +57,7 @@ A lightweight, native C daemon for dynamic hardware fan control on HP Victus & O
   - HP Victus 16-S0010NT (AMD Ryzen 5 7640HS, NVIDIA RTX 4060 Mobile)
 - **Supported Hardware:**
   - HP Victus 16 S00xxNT Series (AMD)
-- **Potantial Supported Hardware:**
+- **Potentially Supported Hardwares (NOT TESTED):**
   - HP Victus 15 & 16 Series (Intel/AMD)
   - HP OMEN 15, 16, 17 Series supporting `hp-wmi` fan control
   - Any HP laptop exposing fan controls under `/sys/devices/platform/hp-wmi/hwmon` with `pwm1_enable` and `fan*_target`.
@@ -210,135 +210,214 @@ Feedback from different HP laptop models is welcome! If you tested this software
 
 ---
 
+## License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
 # 🇹🇷 Türkçe Dokümantasyon
 
-Linux çalıştıran HP Victus ve OMEN dizüstü bilgisayarlar için saf C11 ile yazılmış, ultra hafif ve dinamik fan kontrol yazılımı.
+Victus laptoplar için Linux'ta çalışan hafif bir fan kontrol servisi.
+
+## İçindekiler
+- [Sorumluluk Reddi](#sorumluluk-reddi)
+- [Temel Özellikler](#temel-özellikler)
+- [Desteklenen ve Test Edilen Cihazlar](#desteklenen-ve-test-edilen-cihazlar)
+- [Ön Koşullar](#ön-koşullar)
+- [Hızlı Başlangıç ve Kurulum](#hızlı-başlangıç-ve-kurulum)
+  - [Derleme](#1-derleme)
+  - [Simülasyon / Test Modu (Dry-Run)](#2-simülasyon--test-modu-dry-run)
+  - [Servis Kurulumu (Tek Komut)](#3-servis-kurulumu-tek-komut)
+  - [Temiz Kaldırma (Tek Komut)](#4-temiz-kaldırma-tek-komut)
+- [Yapılandırma Rehberi (`config.conf`)](#yapılandırma-rehberi-configconf)
+- [Fan Eğrisi ve Doğrusal İnterpolasyon](#fan-eğrisi-ve-doğrusal-i̇nterpolasyon)
+- [Güvenlik ve Hata Toleransı Mimarisi](#güvenlik-ve-hata-toleransı-mimarisi)
+- [Katkıda Bulunma ve Test Edilen Cihazları Bildirme](#katkıda-bulunma-ve-test-edilen-cihazları-bildirme)
+- [Lisans](#lisans)
 
 ---
 
-## Sorumluluk Reddi (Disclaimer)
+## Sorumluluk Reddi
 
 > [!CAUTION]
-> **Kullanım tamamen sizin sorumluluğunuzdadır.** Fan hızlarını değiştirmek doğrudan donanım sıcaklığını etkiler. Yanlış veya aşırı agresif düşük hız ayarları, bileşenlerin aşırı ısınmasına (thermal throttling) veya donanım yıpranmasına yol açabilir. Bu yazılım MIT Lisansı altında "olduğu gibi" sağlanmaktadır. Sürekli kullanıma geçmeden önce ayarlarınızı mutlaka `--dry-run` (simülasyon) modunda test ediniz.
+> **Riski size aittir.** Soğutma fanı hızlarını değiştirmek termal davranışı doğrudan etkiler. Uygun olmayan fan eğrileri veya ağır yük altındayken fanların kapatılması termal kısmaya (thermal throttling), sistem kararsızlığına veya donanım bozulmasına neden olabilir. Bu yazılım, MIT Lisansı altında hiçbir garanti olmaksızın "olduğu gibi" sağlanmaktadır. Sürekli kullanımdan önce yapılandırmanızı her zaman `--dry-run` modunda test edin.
 
 ---
 
-## Öne Çıkan Özellikler
+## Temel Özellikler
 
-- **Ultra Hafif (Native C):** Saf C11 ile yazılmıştır. Çalışma zamanı bağımlılığı (Python/Node) yoktur. 2 MB'tan az RAM tüketir.
-- **İzole ve Taşınabilir (Self-Contained):** Sistem dizinlerine (`/usr/local/bin`, `/etc`) dosya saçmaz. Kendi klasöründe çalışır.
-- **Dinamik Çoklu Fan Tespiti:** Sistemdeki fan sayısını (`fan1`, `fan2` vb.) otomatik algılar ve hepsini dinamik olarak yönetir (1, 2 veya daha fazla fan).
-- **Doğrusal Enterpolasyon (Linear Interpolation):** Sıcaklık eşikleri arasında fan devrini pürüzsüzce ölçeklendirir; ani ses ve devir sıçramalarını önler.
-- **Gelişmiş Güvenlik Mimarisi:**
-  - Sensör hatasında (`temp < 0`) veya 5 ölçüm boyunca $\le 25^\circ\text{C}$ sabit takılı kaldığında otomatik %100 acil durum devrine geçer.
-  - Eğri üst sınırı aşıldığında veya kritik sıcaklığa ulaşıldığında fanlar %100 devreye alınır.
-  - `ExecStopPost=` mekanizmasıyla program çökse dahi Systemd fan kontrolünü otomatik olarak BIOS'a iade eder.
-- **Temiz Loglama:** Servis modunda arka planda sessiz çalışarak SSD log kirliliğini önler; istenirse `-v` ile canlı izleme sunar.
+- **Ultra Hafif ve Hızlı:** Sıfır çalışma zamanı bağımlılığı ile saf C11'de yazılmıştır. `< 2 MB` RAM ve minimum CPU kaynağı kullanır.
+- **Bağımsız Mimari:** Tamamen klonlandığı dizinden çalışır. `/usr/local/bin` veya `/etc` dizinlerine hiçbir şey dağıtılmaz.
+- **Dinamik Otomatik Fan Keşfi:** ACPI WMI sysfs aracılığıyla 1, 2 veya daha fazla donanım fanını (`fan1`, `fan2`, vb.) otomatik olarak algılar ve kontrol eder.
+- **Doğrusal İnterpolasyon:** Özel sıcaklık eşikleri arasında fan RPM'ini pürüzsüz bir şekilde ölçeklendirerek ani ve gürültülü RPM sıçramalarını ortadan kaldırır.
+- **Yinelenen Eşik Tekilleştirme:** Fan eğrisi noktalarını otomatik olarak sıralar ve daha güvenli, daha yüksek olan fan hızını seçerek aynı sıcaklık girişlerini çözer.
+- **Hata Toleranslı Güvenlik Ağı:**
+  - Sensör okuması başarısız olursa (`temp < 0`) veya peş peşe 5 kontrol boyunca `<= 25°C`'de takılı kalırsa %100 acil durum fan hızı.
+  - `>= temp_critical` olduğunda veya en yüksek eğri eşiği aşıldığında kritik sıcaklık geçersiz kılması (override).
+  - İşlem beklenmedik bir şekilde sonlandırılsa veya çökse bile Systemd `ExecStopPost=`, BIOS otomatik fan modunu geri yükler.
+  - Donanım EC watchdog ayakta tutma sinyali (heartbeat).
+- **Temiz Günlükleme (Logging):** Systemd arka plan modunda (SSD journal spam'ini önleyerek) tamamen sessiz çalışırken, `-v` / `--verbose` aracılığıyla ayrıntılı canlı izleme sunar.
 
 ---
 
-## Ön Gereksinimler
+## Desteklenen ve Test Edilen Cihazlar
 
-- **Linux Çekirdeği:** `hp-wmi` modülü yüklü 6.1+ çekirdek önerilir.
+- **Test Edilen Donanım:**
+  - HP Victus 16-S0010NT (AMD Ryzen 5 7640HS, NVIDIA RTX 4060 Mobile)
+- **Desteklenen Donanım:**
+  - HP Victus 16 S00xxNT Serisi (AMD)
+- **Potansiyel Olarak Desteklenen Donanımlar (TEST EDİLMEDİ):**
+  - HP Victus 15 ve 16 Serisi (Intel/AMD)
+  - `hp-wmi` fan kontrolünü destekleyen HP OMEN 15, 16, 17 Serisi
+  - Fan kontrollerini `/sys/devices/platform/hp-wmi/hwmon` altında `pwm1_enable` ve `fan*_target` ile açığa çıkaran herhangi bir HP dizüstü bilgisayar.
+
+---
+
+## Ön Koşullar
+
+- **Linux Çekirdeği:** `hp-wmi` çekirdek modülü yüklü olarak 6.1+ önerilir.
 - **Derleme Araçları:** GCC (C11 destekli) ve GNU Make.
-- **Yetkiler:** Sysfs fan kontrol dosyalarına yazabilmek için `sudo` (root) yetkisi gereklidir.
+- **Ayrıcalıklar:** Hedef RPM'leri sysfs'e yazmak için Root (`sudo`) yetkisi gereklidir.
 
-Sisteminizde `hp-wmi` kontrolcüsünün aktif olup olmadığını kontrol etmek için:
+Makinenizde `hp-wmi` bulunup bulunmadığını kontrol etmek için:
 ```bash
 ls -d /sys/devices/platform/hp-wmi/hwmon/hwmon*
 ```
 
 > [!NOTE]
-> Eğer mevcut çekirdeğinizde `hp-wmi` fan kontrol dizini görünmüyorsa, fan kontrol desteğini etkinleştirmek için yamalanmış DKMS modülü olan [TUXOV/hp-wmi-fan-and-backlight-control](https://github.com/TUXOV/hp-wmi-fan-and-backlight-control) projesini yükleyebilirsiniz.
+> Eğer çekirdek/BIOS sürümünüzde `hp-wmi` sysfs fan kontrol dizini bulunamazsa, HP WMI fan kontrol desteğini etkinleştirmek için yamalanmış DKMS çekirdek modülünü [TUXOV/hp-wmi-fan-and-backlight-control](https://github.com/TUXOV/hp-wmi-fan-and-backlight-control) adresinden kurabilirsiniz.
 
 ---
 
-## Kurulum ve Kullanım
+## Hızlı Başlangıç ve Kurulum
 
 ### 1. Derleme
+Depoyu klonlayın ve binary dosyasını derleyin:
 ```bash
 git clone https://github.com/Umut-Ersoy/victus-fan-control.git
 cd victus-fan-control
 make
 ```
 
-### 2. Simülasyon / Test Modu
-Donanıma yazmadan güvenle test etmek için:
+### 2. Simülasyon / Test Modu (Dry-Run)
+Yapılandırmanızı donanım sysfs'ine yazmadan test edin:
 ```bash
-# Temel simülasyon (tablo ve ayarları doğrular)
+# Temel simülasyon (yapılandırmayı okur ve eğri tablosunu yazdırır)
 ./victus-fan-control -t
 
-# Canlı simülasyon (sıcaklık ve fan devirlerini anlık basar)
+# Ayrıntılı simülasyon (gerçek zamanlı CPU sıcaklığını ve fan RPM'lerini canlı akış olarak gösterir)
 ./victus-fan-control -t -v
 ```
 
-### 3. Servis Olarak Kurulum (Tek Komut)
+### 3. Servis Kurulumu (Tek Komut)
+Systemd arka plan programını kurun ve başlatın:
 ```bash
 sudo make install
 ```
-*Bu komut, geçerli proje dizinini dinamik olarak alarak `/etc/systemd/system/victus-fan-control.service` dosyasını oluşturur ve servisi hemen başlatır.*
+*Not: Bu, doğrudan yerel proje dizininize işaret eden dinamik bir `/etc/systemd/system/victus-fan-control.service` oluşturur ve servisi hemen başlatır.*
 
-Servis durumunu ve logları kontrol etmek için:
+Servis durumunu ve günlükleri kontrol edin:
 ```bash
 systemctl status victus-fan-control.service
 journalctl -u victus-fan-control.service -f
 ```
 
-### 4. Tamamen Kaldırma (Tek Komut)
-Servisi durdurmak, silmek ve fan kontrolünü BIOS'a iade etmek için:
+### 4. Temiz Kaldırma
+Servisi tamamen kaldırmak ve tam BIOS otomatik kontrolünü geri yüklemek için:
 ```bash
 sudo make uninstall
 ```
-Kaldırma tamamlandıktan sonra proje klasörünü güvenle silebilirsiniz:
+Kaldırıldıktan sonra, proje dizinini güvenle silebilirsiniz:
 ```bash
 cd .. && rm -rf victus-fan-control
 ```
 
 ---
 
-## Konfigürasyon Ayarları (`config.conf`)
+## Yapılandırma Rehberi (`config.conf`)
 
-Tüm ayarlar çalıştırılabilir dosyanın hemen yanındaki `config.conf` dosyasından yönetilir:
+Yapılandırma dosyası, yürütülebilir dosyanın hemen yanındaki `config.conf` konumundadır.
 
-```ini
-# Sıcaklık kontrol aralığı (saniye)
-check_interval = 1
-
-# EC Watchdog tazeleme aralığı (saniye)
-heartbeat_interval = 10
-
-# İlk eşik altındaki varsayılan fan devri (%)
-default_speed = 0
-
-# Kritik sıcaklık eşiği (°C - 100% devir zorlar)
-temp_critical = 85
-
-# Fan Eğrisi (sıcaklık:yüzde)
-fan_curve = 45:30, 50:40, 55:50, 60:60, 65:70, 70:80, 75:85, 80:90, 85:95
-
-# Doğrusal enterpolasyon (true: pürüzsüz lineer geçiş, false: basamaklı)
-linear_interpolation = true
-
-# Kapanışta BIOS otomatik moda geri dön
-restore_auto_on_exit = true
-```
+| Seçenek | Varsayılan | Açıklama |
+| :--- | :--- | :--- |
+| `check_interval` | `1` | Saniye cinsinden sıcaklık sorgulama sıklığı. |
+| `heartbeat_interval` | `10` | EC watchdog'u ayakta tutmak için sysfs hedef hızlarını yenileme sıklığı (saniye cinsinden). |
+| `default_speed` | `0` | Sıcaklık en düşük eğri eşiğinin altında olduğunda fan hızı yüzdesi (%). |
+| `temp_critical` | `85` | °C cinsinden kritik sıcaklık. %100 acil durum fan hızını zorlar. |
+| `fan_curve` | `45:30, 50:40, ...` | Virgülle ayrılmış `sicaklik_celsius:hiz_yuzdesi` çiftleri listesi. |
+| `linear_interpolation` | `true` | Noktalar arası pürüzsüz doğrusal RPM ölçeklendirmesi için `true`; ayrık adım eşikleri için `false`. |
+| `restore_auto_on_exit` | `true` | Arka plan programı temiz bir şekilde sonlandığında BIOS otomatik fan kontrolünü geri yükler. |
+| `enable_colors` | `true` | Etkileşimli terminal oturumlarında ANSI renk çıktısını etkinleştirir. |
+| `override_fan_dir` | *(boş)* | Fan hwmon dizinine özel yol (otomatik algılama için boş bırakın). |
+| `override_cpu_temp_file`| *(boş)* | CPU sıcaklık dosyasına özel yol (otomatik algılama için boş bırakın). |
 
 ---
 
-## Desteklenen Cihazlar Bildirimi
+## Fan Eğrisi ve Doğrusal İnterpolasyon
 
-Yazılımı farklı bir HP modelinde test ettiyseniz, lütfen aşağıdaki şablonla GitHub Issue açarak listeye katkıda bulununuz:
+`linear_interpolation = true` ile fan hızı ayrık adımlarla atlamak yerine noktalar arasında pürüzsüz bir şekilde ölçeklenir.
+
+**Örnek Eğri:**
+```ini
+fan_curve = 45:30, 50:40, 60:60, 70:80, 85:95
+```
 
 ```text
-- Cihaz Modeli: HP Victus 16-XXXX / OMEN 16-XXXX
-- İşlemci (CPU): (örn. AMD Ryzen 7 7840HS / Intel Core i7-13700H)
-- Ekran Kartı (GPU): (örn. NVIDIA RTX 4060 / AMD Radeon)
-- Linux Kernel: (örn. uname -r)
-- Test Çıktısı: ./victus-fan-control -t
+Sıcaklık Eğrisi Modu: Doğrusal İnterpolasyon
+  < 45°C       ->   0% (Kapalı / Varsayılan)
+  45°C - 50°C  ->  30% ~ 40% (Doğrusal eğim)
+  50°C - 60°C  ->  40% ~ 60% (Doğrusal eğim)
+  60°C - 70°C  ->  60% ~ 80% (Doğrusal eğim)
+  70°C - 85°C  ->  80% ~ 95% (Doğrusal eğim)
+  = 85°C       ->  95%
+  > 85°C       -> 100% (Kritik Koruma Modu)
 ```
 
 ---
 
-## License
+## Güvenlik ve Hata Toleransı Mimarisi
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+```
+                    ┌───────────────────────────┐
+                    │    Sensörü Oku (sysfs)    │
+                    └────────────┬──────────────┘
+                                 │
+                 ┌───────────────┴───────────────┐
+                 ▼                               ▼
+ [ sıc. < 0 VEYA <= 25°C takılı ]      [ Normal Okuma ]
+                 │                               │
+                 ▼                               ▼
+    Acil Durum %100'ü Devreye Al       Fan Eğrisini Hesapla
+     stderr'e [HATA] Günlüğü Yaz      (Doğrusal İnterpolasyon)
+                 │                               │
+                 └───────────────┬───────────────┘
+                                 ▼
+                       Hedefleri Sysfs'e Yaz
+```
+
+1. **Takılı Sensör Watchdog:** Eğer bir ACPI hatası, sensörün peş peşe 5 sorgulama döngüsü boyunca $\le 25^\circ\text{C}$'de takılı bir değer okumasına neden olursa, arka plan programı `stderr`'e bir hata günlüğü yazar ve %100 acil durum soğutmasını devreye alır.
+2. **Acil Durum Üst Sınırı:** Tanımlanan en yüksek eğri noktasını veya `temp_critical` değerini aşan herhangi bir sıcaklık anında %100 fan hızını tetikler.
+3. **Çökme Kurtarması:** Systemd `ExecStopPost`, servis çıkışında, çökmesinde veya `SIGKILL` durumunda otomatik olarak `echo 2 > pwm1_enable` komutunu çalıştırır.
+
+---
+
+## Katkıda Bulunma ve Test Edilen Cihazları Bildirme
+
+Farklı HP dizüstü bilgisayar modellerinden gelecek geri bildirimleri memnuniyetle karşılıyoruz! Eğer bu yazılımı cihazınızda test ettiyseniz, lütfen aşağıdaki detaylarla birlikte bir GitHub Issue açın:
+
+```text
+- Dizüstü Bilgisayar Modeli: HP Victus 16-XXXX / OMEN 16-XXXX
+- İşlemci: (ör. AMD Ryzen 7 7840HS / Intel Core i7-13700H)
+- Ekran Kartı: (ör. NVIDIA RTX 4060 / AMD Radeon)
+- Linux Çekirdeği: (ör. uname -r)
+- Çıktısı: ./victus-fan-control -t
+```
+
+---
+
+<br>
+
+---
+
+## Lisans
+
+Bu proje MIT Lisansı ile lisanslanmıştır - detaylar için [LICENSE](LICENSE) dosyasına bakın.
