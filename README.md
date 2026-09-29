@@ -13,17 +13,14 @@ A lightweight fan control daemon for Victus laptops running Linux.
 ## Table of Contents
 - [Disclaimer](#disclaimer)
 - [Key Features](#key-features)
-- [Supported & Tested Devices](#supported--tested-devices)
+- [Device Compatibility](#device-compatibility)
 - [Prerequisites](#prerequisites)
 - [Quick Start & Installation](#quick-start--installation)
   - [Compilation](#1-compilation)
   - [Simulation / Test Mode (Dry-Run)](#2-simulation--test-mode-dry-run)
   - [Service Installation (One-Command)](#3-service-installation-one-command)
   - [Clean Uninstallation (One-Command)](#4-clean-uninstallation-one-command)
-- [Configuration Guide (`config.conf`)](#configuration-guide-configconf)
-- [Fan Curve & Linear Interpolation](#fan-curve--linear-interpolation)
-- [Safety & Fault-Tolerance Architecture](#safety--fault-tolerance-architecture)
-- [Contributing & Reporting Tested Devices](#contributing--reporting-tested-devices)
+- [Configuration](#configuration)
 - [License](#license)
 
 ---
@@ -49,18 +46,15 @@ A lightweight fan control daemon for Victus laptops running Linux.
   - Hardware EC watchdog keep-alive heartbeat.
 - **Clean Logging:** Runs completely silent in systemd background mode (preventing SSD journal spam), while offering verbose live monitoring via `-v` / `--verbose`.
 
+For more details on the safety architecture and fault tolerance, see [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
+
 ---
 
-## Supported & Tested Devices
+## Device Compatibility
+- **Tested:** HP Victus 16-S0010NT (Ryzen 5 7640HS, RTX 4060)
+- **Target:** HP Victus & OMEN models exposing fan sysfs via `hp-wmi`.
 
-- **Tested Hardware:**
-  - HP Victus 16-S0010NT (AMD Ryzen 5 7640HS, NVIDIA RTX 4060 Mobile)
-- **Supported Hardware:**
-  - HP Victus 16 S00xxNT Series (AMD)
-- **Potentially Supported Hardwares (NOT TESTED):**
-  - HP Victus 15 & 16 Series (Intel/AMD)
-  - HP OMEN 15, 16, 17 Series supporting `hp-wmi` fan control
-  - Any HP laptop exposing fan controls under `/sys/devices/platform/hp-wmi/hwmon` with `pwm1_enable` and `fan*_target`.
+For the full list of tested hardware and instructions on reporting your device, see [docs/DEVICES.md](docs/DEVICES.md).
 
 ---
 
@@ -125,84 +119,11 @@ cd .. && rm -rf victus-fan-control
 
 ---
 
-## Configuration Guide (`config.conf`)
+## Configuration
 
-The configuration file is located at `config.conf` right next to the executable.
+All configuration is managed via the `config.conf` file located in the application directory.
 
-| Option | Default | Description |
-| :--- | :--- | :--- |
-| `check_interval` | `1` | Temperature polling frequency in seconds. |
-| `heartbeat_interval` | `10` | Frequency in seconds to refresh sysfs target speeds to keep the EC watchdog alive. |
-| `default_speed` | `0` | Fan speed percentage (%) when temperature is below the lowest curve threshold. |
-| `temp_critical` | `85` | Critical temperature in °C. Forces 100% emergency fan speed. |
-| `fan_curve` | `45:30, 50:40, ...` | Comma-separated list of `temp_celsius:speed_percentage` pairs. |
-| `linear_interpolation` | `true` | `true` for smooth linear RPM scaling between points; `false` for discrete step thresholds. |
-| `restore_auto_on_exit` | `true` | Restores BIOS automatic fan control when the daemon terminates cleanly. |
-| `enable_colors` | `true` | Enables ANSI color output in interactive terminal sessions. |
-| `override_fan_dir` | *(empty)* | Custom path to fan hwmon directory (leave empty for auto-detection). |
-| `override_cpu_temp_file`| *(empty)* | Custom path to CPU temperature file (leave empty for auto-detection). |
-
----
-
-## Fan Curve & Linear Interpolation
-
-With `linear_interpolation = true`, the fan speed scales smoothly between points rather than jumping in discrete steps.
-
-**Example Curve:**
-```ini
-fan_curve = 45:30, 50:40, 60:60, 70:80, 85:95
-```
-
-```text
-Temperature Curve Mode: Linear Interpolation
-  < 45°C       ->   0% (Off / Default)
-  45°C - 50°C  ->  30% ~ 40% (Linear slope)
-  50°C - 60°C  ->  40% ~ 60% (Linear slope)
-  60°C - 70°C  ->  60% ~ 80% (Linear slope)
-  70°C - 85°C  ->  80% ~ 95% (Linear slope)
-  = 85°C       ->  95%
-  > 85°C       -> 100% (Critical Protection Mode)
-```
-
----
-
-## Safety & Fault-Tolerance Architecture
-
-```
-                    ┌────────────────────────┐
-                    │  Read Sensor (sysfs)   │
-                    └───────────┬────────────┘
-                                │
-                 ┌──────────────┴──────────────┐
-                 ▼                             ▼
-        [ temp < 0 OR stuck <= 25°C ]    [ Normal Reading ]
-                 │                             │
-                 ▼                             ▼
-         Engage Emergency 100%         Calculate Fan Curve
-         Log [ERROR] to stderr          (Linear Interpolation)
-                 │                             │
-                 └──────────────┬──────────────┘
-                                ▼
-                    Write Targets to Sysfs
-```
-
-1. **Stuck Sensor Watchdog:** If an ACPI glitch causes the sensor to read a stuck value $\le 25^\circ\text{C}$ for 5 consecutive polling cycles, the daemon logs an error to `stderr` and engages 100% emergency cooling.
-2. **Emergency Upper Bound:** Any temperature exceeding the highest defined curve point or `temp_critical` immediately triggers 100% fan speed.
-3. **Crash Recovery:** Systemd `ExecStopPost` automatically executes `echo 2 > pwm1_enable` upon service exit, crash, or `SIGKILL`.
-
----
-
-## Contributing & Reporting Tested Devices
-
-Feedback from different HP laptop models is welcome! If you tested this software on your device, please open a GitHub Issue with the following details:
-
-```text
-- Laptop Model: HP Victus 16-XXXX / OMEN 16-XXXX
-- CPU: (e.g. AMD Ryzen 7 7840HS / Intel Core i7-13700H)
-- GPU: (e.g. NVIDIA RTX 4060 / AMD Radeon)
-- Linux Kernel: (e.g. uname -r)
-- Output of: ./victus-fan-control -t
-```
+For detailed explanation of all configuration parameters, curve tuning, and linear interpolation, see [docs/CONFIGURATION.md](docs/CONFIGURATION.md).
 
 ---
 

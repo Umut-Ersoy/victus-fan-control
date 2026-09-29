@@ -13,17 +13,14 @@ Victus laptoplar için Linux'ta çalışan hafif bir fan kontrol servisi.
 ## İçindekiler
 - [Sorumluluk Reddi](#sorumluluk-reddi)
 - [Temel Özellikler](#temel-özellikler)
-- [Desteklenen ve Test Edilen Cihazlar](#desteklenen-ve-test-edilen-cihazlar)
+- [Cihaz Uyumluluğu](#cihaz-uyumluluğu)
 - [Ön Koşullar](#ön-koşullar)
 - [Hızlı Başlangıç ve Kurulum](#hızlı-başlangıç-ve-kurulum)
   - [Derleme](#1-derleme)
   - [Simülasyon / Test Modu (Dry-Run)](#2-simülasyon--test-modu-dry-run)
   - [Servis Kurulumu (Tek Komut)](#3-servis-kurulumu-tek-komut)
   - [Temiz Kaldırma (Tek Komut)](#4-temiz-kaldırma-tek-komut)
-- [Yapılandırma Rehberi (`config.conf`)](#yapılandırma-rehberi-configconf)
-- [Fan Eğrisi ve Doğrusal İnterpolasyon](#fan-eğrisi-ve-doğrusal-i̇nterpolasyon)
-- [Güvenlik ve Hata Toleransı Mimarisi](#güvenlik-ve-hata-toleransı-mimarisi)
-- [Katkıda Bulunma ve Test Edilen Cihazları Bildirme](#katkıda-bulunma-ve-test-edilen-cihazları-bildirme)
+- [Yapılandırma](#yapılandırma)
 - [Lisans](#lisans)
 
 ---
@@ -49,18 +46,15 @@ Victus laptoplar için Linux'ta çalışan hafif bir fan kontrol servisi.
   - Donanım EC watchdog ayakta tutma sinyali (heartbeat).
 - **Temiz Günlükleme (Logging):** Systemd arka plan modunda (SSD journal spam'ini önleyerek) tamamen sessiz çalışırken, `-v` / `--verbose` aracılığıyla ayrıntılı canlı izleme sunar.
 
+Güvenlik mimarisi ve hata toleransı hakkında daha fazla bilgi için [docs/ARCHITECTURE.tr.md](docs/ARCHITECTURE.tr.md) sayfasına bakın.
+
 ---
 
-## Desteklenen ve Test Edilen Cihazlar
+## Cihaz Uyumluluğu
+- **Test Edildi:** HP Victus 16-S0010NT (Ryzen 5 7640HS, RTX 4060)
+- **Hedef:** `hp-wmi` aracılığıyla fan sysfs arayüzünü açığa çıkaran HP Victus ve OMEN modelleri.
 
-- **Test Edilen Donanım:**
-  - HP Victus 16-S0010NT (AMD Ryzen 5 7640HS, NVIDIA RTX 4060 Mobile)
-- **Desteklenen Donanım:**
-  - HP Victus 16 S00xxNT Serisi (AMD)
-- **Potansiyel Olarak Desteklenen Donanımlar (TEST EDİLMEDİ):**
-  - HP Victus 15 ve 16 Serisi (Intel/AMD)
-  - `hp-wmi` fan kontrolünü destekleyen HP OMEN 15, 16, 17 Serisi
-  - Fan kontrollerini `/sys/devices/platform/hp-wmi/hwmon` altında `pwm1_enable` ve `fan*_target` ile açığa çıkaran herhangi bir HP dizüstü bilgisayar.
+Test edilen donanımların tam listesi ve kendi cihazınızı bildirme talimatları için [docs/DEVICES.tr.md](docs/DEVICES.tr.md) sayfasına bakın.
 
 ---
 
@@ -125,88 +119,11 @@ cd .. && rm -rf victus-fan-control
 
 ---
 
-## Yapılandırma Rehberi (`config.conf`)
+## Yapılandırma
 
-Yapılandırma dosyası, yürütülebilir dosyanın hemen yanındaki `config.conf` konumundadır.
+Tüm ayarlar uygulama dizininde yer alan `config.conf` dosyası üzerinden yönetilir.
 
-| Seçenek | Varsayılan | Açıklama |
-| :--- | :--- | :--- |
-| `check_interval` | `1` | Saniye cinsinden sıcaklık sorgulama sıklığı. |
-| `heartbeat_interval` | `10` | EC watchdog'u ayakta tutmak için sysfs hedef hızlarını yenileme sıklığı (saniye cinsinden). |
-| `default_speed` | `0` | Sıcaklık en düşük eğri eşiğinin altında olduğunda fan hızı yüzdesi (%). |
-| `temp_critical` | `85` | °C cinsinden kritik sıcaklık. %100 acil durum fan hızını zorlar. |
-| `fan_curve` | `45:30, 50:40, ...` | Virgülle ayrılmış `sicaklik_celsius:hiz_yuzdesi` çiftleri listesi. |
-| `linear_interpolation` | `true` | Noktalar arası pürüzsüz doğrusal RPM ölçeklendirmesi için `true`; ayrık adım eşikleri için `false`. |
-| `restore_auto_on_exit` | `true` | Arka plan programı temiz bir şekilde sonlandığında BIOS otomatik fan kontrolünü geri yükler. |
-| `enable_colors` | `true` | Etkileşimli terminal oturumlarında ANSI renk çıktısını etkinleştirir. |
-| `override_fan_dir` | *(boş)* | Fan hwmon dizinine özel yol (otomatik algılama için boş bırakın). |
-| `override_cpu_temp_file`| *(boş)* | CPU sıcaklık dosyasına özel yol (otomatik algılama için boş bırakın). |
-
----
-
-## Fan Eğrisi ve Doğrusal İnterpolasyon
-
-`linear_interpolation = true` ile fan hızı ayrık adımlarla atlamak yerine noktalar arasında pürüzsüz bir şekilde ölçeklenir.
-
-**Örnek Eğri:**
-```ini
-fan_curve = 45:30, 50:40, 60:60, 70:80, 85:95
-```
-
-```text
-Sıcaklık Eğrisi Modu: Doğrusal İnterpolasyon
-  < 45°C       ->   0% (Kapalı / Varsayılan)
-  45°C - 50°C  ->  30% ~ 40% (Doğrusal eğim)
-  50°C - 60°C  ->  40% ~ 60% (Doğrusal eğim)
-  60°C - 70°C  ->  60% ~ 80% (Doğrusal eğim)
-  70°C - 85°C  ->  80% ~ 95% (Doğrusal eğim)
-  = 85°C       ->  95%
-  > 85°C       -> 100% (Kritik Koruma Modu)
-```
-
----
-
-## Güvenlik ve Hata Toleransı Mimarisi
-
-```
-                    ┌───────────────────────────┐
-                    │    Sensörü Oku (sysfs)    │
-                    └────────────┬──────────────┘
-                                 │
-                 ┌───────────────┴───────────────┐
-                 ▼                               ▼
- [ sıc. < 0 VEYA <= 25°C takılı ]      [ Normal Okuma ]
-                 │                               │
-                 ▼                               ▼
-    Acil Durum %100'ü Devreye Al       Fan Eğrisini Hesapla
-     stderr'e [HATA] Günlüğü Yaz      (Doğrusal İnterpolasyon)
-                 │                               │
-                 └───────────────┬───────────────┘
-                                 ▼
-                       Hedefleri Sysfs'e Yaz
-```
-
-1. **Takılı Sensör Watchdog:** Eğer bir ACPI hatası, sensörün peş peşe 5 sorgulama döngüsü boyunca $\le 25^\circ\text{C}$'de takılı bir değer okumasına neden olursa, arka plan programı `stderr`'e bir hata günlüğü yazar ve %100 acil durum soğutmasını devreye alır.
-2. **Acil Durum Üst Sınırı:** Tanımlanan en yüksek eğri noktasını veya `temp_critical` değerini aşan herhangi bir sıcaklık anında %100 fan hızını tetikler.
-3. **Çökme Kurtarması:** Systemd `ExecStopPost`, servis çıkışında, çökmesinde veya `SIGKILL` durumunda otomatik olarak `echo 2 > pwm1_enable` komutunu çalıştırır.
-
----
-
-## Katkıda Bulunma ve Test Edilen Cihazları Bildirme
-
-Farklı HP dizüstü bilgisayar modellerinden gelecek geri bildirimleri memnuniyetle karşılıyoruz! Eğer bu yazılımı cihazınızda test ettiyseniz, lütfen aşağıdaki detaylarla birlikte bir GitHub Issue açın:
-
-```text
-- Dizüstü Bilgisayar Modeli: HP Victus 16-XXXX / OMEN 16-XXXX
-- İşlemci: (ör. AMD Ryzen 7 7840HS / Intel Core i7-13700H)
-- Ekran Kartı: (ör. NVIDIA RTX 4060 / AMD Radeon)
-- Linux Çekirdeği: (ör. uname -r)
-- Çıktısı: ./victus-fan-control -t
-```
-
----
-
-<br>
+Tüm yapılandırma seçenekleri, eğri ayarlama ve doğrusal interpolasyon detayları için [docs/CONFIGURATION.tr.md](docs/CONFIGURATION.tr.md) kılavuzuna bakın.
 
 ---
 
